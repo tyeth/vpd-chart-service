@@ -1,3 +1,4 @@
+import { httpServerHandler } from 'cloudflare:node';
 const express = require('express');
 const { createCanvas } = require('canvas');
 const axios = require('axios');
@@ -536,3 +537,7 @@ app.listen(PORT, () => {
   console.log(`  With feed + key: ...&feed_url=https://io.adafruit.com/USERNAME/feeds/FEED&aio_key=YOUR_KEY`);
   console.log(`\n  List crops: http://localhost:${PORT}/crops`);
 });
+
+export default httpServerHandler({ port: PORT });
+// Or you can simply pass the http.Server instance directly:
+// export default httpServerHandler(app.listen(3000));
