@@ -554,6 +554,166 @@ app.get('/vpd-chart', async (req, res) => {
   }
 });
 
+// POST endpoint - same functionality as GET, accepts query string parameters
+app.post('/vpd-chart', async (req, res) => {
+  try {
+    // Wait for font to load if in Workers environment
+    if (fontInitPromise) {
+      await fontInitPromise;
+    }
+    
+    // Parse query parameters first (same as GET)
+    const airTemp = parseFloat(req.query.air_temp);
+    const rh = req.query.rh ? parseFloat(req.query.rh) : null;
+    const leafTemp = req.query.leaf_temp ? parseFloat(req.query.leaf_temp) : null;
+    const vpdInput = req.query.vpd ? parseFloat(req.query.vpd) : null;
+    const cropType = req.query.crop_type || 'general';
+    const stage = req.query.stage || null;
+    const fontUrl = req.query.font_url || null;
+    const fontName = req.query.font_name || null;
+    
+    // Load custom font if URL provided
+    let customFontFamily = null;
+    if (fontUrl) {
+      try {
+        const { loadFontFromURL: loadFont, registerFontWithPureImage: registerFont } = require('./font-loader');
+        const PureImage = require('./canvas-compat').PureImage;
+        
+        const fontData = await loadFont(fontUrl, fontName);
+        if (PureImage) {
+          registerFont(PureImage, fontData);
+        }
+        customFontFamily = fontData.family;
+        console.log(`Custom font loaded: ${customFontFamily}`);
+      } catch (fontError) {
+        console.error('Error loading custom font:', fontError);
+        return res.status(400).json({ 
+          error: 'Failed to load custom font', 
+          details: fontError.message 
+        });
+      }
+    }
+    
+    // Callback options
+    const callbackUrl = req.query.callback_url;
+    const feedUrl = req.query.feed_url;
+    const aioKey = req.query.aio_key;
+    
+    // Validate inputs
+    if (isNaN(airTemp)) {
+      return res.status(400).json({ error: 'air_temp is required and must be a number' });
+    }
+    
+    // Validate crop type
+    const cropConfig = getCropConfig(cropType);
+    
+    // Validate stage if provided
+    if (stage && !cropConfig.stages[stage]) {
+      return res.status(400).json({ 
+        error: `Invalid stage '${stage}' for crop '${cropType}'`,
+        available_stages: Object.keys(cropConfig.stages)
+      });
+    }
+    
+    // Validate callback options
+    if (feedUrl && !aioKey) {
+      return res.status(400).json({ error: 'aio_key is required when feed_url is provided' });
+    }
+    if (aioKey && !feedUrl) {
+      return res.status(400).json({ error: 'feed_url is required when aio_key is provided' });
+    }
+    if (callbackUrl && (feedUrl || aioKey)) {
+      return res.status(400).json({ error: 'Cannot use both callback_url and feed_url/aio_key methods' });
+    }
+    
+    // Calculate VPD based on available inputs
+    let vpd;
+    let actualLeafTemp;
+    let actualRH;
+    
+    if (vpdInput !== null) {
+      vpd = vpdInput;
+      actualLeafTemp = leafTemp !== null ? leafTemp : null;
+      actualRH = rh !== null ? rh : null;
+    } else if (rh !== null && leafTemp !== null) {
+      vpd = calculateVPDFromRH(airTemp, rh);
+      actualRH = rh;
+      actualLeafTemp = leafTemp;
+    } else if (rh !== null) {
+      vpd = calculateVPDFromRH(airTemp, rh);
+      actualRH = rh;
+      actualLeafTemp = null;
+    } else if (leafTemp !== null) {
+      vpd = calculateVPD(airTemp, leafTemp);
+      actualLeafTemp = leafTemp;
+      actualRH = null;
+    } else {
+      return res.status(400).json({ 
+        error: 'Must provide either: rh, leaf_temp, or vpd parameter' 
+      });
+    }
+    
+    // Generate chart with custom font if provided
+    const pngBuffer = await generateVPDChart(
+      vpd, 
+      airTemp, 
+      actualLeafTemp, 
+      cropType, 
+      stage,
+      customFontFamily || 'Roboto'
+    );
+    const base64Image = pngBuffer.toString('base64');
+    
+    // Determine status
+    let status = 'unknown';
+    if (stage && cropConfig.stages[stage]) {
+      const range = cropConfig.stages[stage];
+      if (vpd >= range.min && vpd <= range.max) {
+        status = 'optimal';
+      } else if (vpd < range.min) {
+        status = 'too_low';
+      } else {
+        status = 'too_high';
+      }
+    }
+    
+    const response = {
+      vpd: parseFloat(vpd.toFixed(2)),
+      air_temp: airTemp,
+      leaf_temp: actualLeafTemp,
+      rh: actualRH,
+      crop_type: cropType,
+      stage: stage,
+      status: status,
+      image: `data:image/png;base64,${base64Image}`,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Handle callbacks if provided
+    if (callbackUrl || feedUrl) {
+      try {
+        if (callbackUrl) {
+          await axios.post(callbackUrl, response);
+        } else if (feedUrl && aioKey) {
+          await axios.post(feedUrl, 
+            { value: vpd.toFixed(2) },
+            { headers: { 'X-AIO-Key': aioKey } }
+          );
+        }
+      } catch (callbackError) {
+        console.error('Callback error:', callbackError.message);
+        response.callback_error = callbackError.message;
+      }
+    }
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Error generating VPD chart (POST):', error);
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});
+
 // List available crops and stages
 app.get('/crops', (req, res) => {
   const crops = {};
