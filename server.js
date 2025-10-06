@@ -5,6 +5,9 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
+// Handle favicon requests to avoid 404 errors
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // Crop-specific VPD configurations (in kPa)
 // Easy to extend with new crops and their specific requirements
 const CROP_CONFIGS = {
@@ -529,15 +532,17 @@ app.get('/health', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-// Start server (Node.js environment)
-app.listen(PORT, () => {
-  console.log(`VPD Chart Service running on port ${PORT}`);
-  console.log(`\nExamples:`);
-  console.log(`  Basic: http://localhost:${PORT}/vpd-chart?air_temp=24&crop_type=tomato&stage=flower`);
-  console.log(`  With raw webhook: ...&callback_url=https://io.adafruit.com/api/v2/webhooks/feed/YOUR_WEBHOOK_ID/raw`);
-  console.log(`  With feed + key: ...&feed_url=https://io.adafruit.com/USERNAME/feeds/FEED&aio_key=YOUR_KEY`);
-  console.log(`\n  List crops: http://localhost:${PORT}/crops`);
-});
+// Only start the server if this file is run directly (not imported as a module)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`VPD Chart Service running on port ${PORT}`);
+    console.log(`\nExamples:`);
+    console.log(`  Basic: http://localhost:${PORT}/vpd-chart?air_temp=24&crop_type=tomato&stage=flower`);
+    console.log(`  With raw webhook: ...&callback_url=https://io.adafruit.com/api/v2/webhooks/feed/YOUR_WEBHOOK_ID/raw`);
+    console.log(`  With feed + key: ...&feed_url=https://io.adafruit.com/USERNAME/feeds/FEED&aio_key=YOUR_KEY`);
+    console.log(`\n  List crops: http://localhost:${PORT}/crops`);
+  });
+}
 
 // Export the app for Cloudflare Workers wrapper
 module.exports = app;
