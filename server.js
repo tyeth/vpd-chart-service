@@ -1,5 +1,5 @@
 const express = require('express');
-const { createCanvas } = require('./canvas-compat');
+const { createCanvas, fontInitPromise } = require('./canvas-compat');
 const axios = require('axios');
 
 const app = express();
@@ -169,7 +169,7 @@ function calculateRHForVPD(airTemp, targetVPD) {
 }
 
 // Generate VPD chart
-function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage) {
+async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage) {
   const width = 600;
   const height = 400;
   const canvas = createCanvas(width, height);
@@ -266,7 +266,7 @@ function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage) {
     
     // Zone label
     ctx.fillStyle = range.color;
-    ctx.font = isCurrentStage ? 'bold 12px Arial' : '11px Arial';
+    ctx.font = isCurrentStage ? '12px Roboto' : '11px Roboto';
     // Calculate label position at middle temperature
     const midTemp = (tempMin + tempMax) / 2;
     const midRH = (rhMin + rhMax) / 2;
@@ -307,7 +307,7 @@ function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage) {
   
   // Y-axis labels (VPD)
   ctx.fillStyle = '#000000';
-  ctx.font = '12px Arial';
+  ctx.font = '12px Roboto';
   ctx.textAlign = 'right';
   for (let vpd = 0; vpd <= vpdMax; vpd += 0.5) {
     ctx.fillText(vpd.toFixed(1), margin.left - 10, vpdToY(vpd) + 4);
@@ -323,17 +323,17 @@ function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage) {
   ctx.save();
   ctx.translate(20, height / 2);
   ctx.rotate(-Math.PI / 2);
-  ctx.font = 'bold 14px Arial';
+  ctx.font = '14px Roboto';
   ctx.textAlign = 'center';
   ctx.fillText('VPD (kPa)', 0, 0);
   ctx.restore();
   
-  ctx.font = 'bold 14px Arial';
+  ctx.font = '14px Roboto';
   ctx.textAlign = 'center';
   ctx.fillText('Air Temperature (°C)', width / 2, height - 10);
   
   // Chart title
-  ctx.font = 'bold 16px Arial';
+  ctx.font = '16px Roboto';
   const title = stage ? 
     `VPD Chart - ${cropConfig.name} (${cropConfig.stages[stage]?.label || stage})` :
     `VPD Chart - ${cropConfig.name}`;
@@ -358,7 +358,7 @@ function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage) {
     
     // Current values label
     ctx.fillStyle = '#000000';
-    ctx.font = 'bold 12px Arial';
+    ctx.font = '12px Roboto';
     ctx.textAlign = 'left';
     // Show leaf temp if different from air temp, or RH if calculated from it
     const tempInfo = leafTemp !== null ? 
@@ -372,12 +372,19 @@ function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage) {
   }
   
   // Convert to optimized PNG buffer
-  return canvas.toBuffer('image/png', { compressionLevel: 9, filters: canvas.PNG_FILTER_NONE });
+  // Handle both sync (node-canvas) and async (OffscreenCanvas) APIs
+  const toBufferResult = canvas.toBuffer('image/png');
+  return toBufferResult instanceof Promise ? await toBufferResult : toBufferResult;
 }
 
 // Main endpoint
 app.get('/vpd-chart', async (req, res) => {
   try {
+    // Wait for font to load if in Workers environment
+    if (fontInitPromise) {
+      await fontInitPromise;
+    }
+    
     const airTemp = parseFloat(req.query.air_temp);
     const rh = req.query.rh ? parseFloat(req.query.rh) : null;
     const leafTemp = req.query.leaf_temp ? parseFloat(req.query.leaf_temp) : null;
@@ -450,7 +457,7 @@ app.get('/vpd-chart', async (req, res) => {
     }
     
     // Generate chart
-    const pngBuffer = generateVPDChart(vpd, airTemp, actualLeafTemp, cropType, stage);
+    const pngBuffer = await generateVPDChart(vpd, airTemp, actualLeafTemp, cropType, stage);
     const base64Image = pngBuffer.toString('base64');
     
     // Determine if VPD is in optimal range
@@ -509,7 +516,8 @@ app.get('/vpd-chart', async (req, res) => {
     res.json(responseData);
     
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating VPD chart:', error);
+    res.status(500).json({ error: error.message, stack: error.stack });
   }
 });
 

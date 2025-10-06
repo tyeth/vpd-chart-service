@@ -3,5 +3,21 @@ main = "worker.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-## LEGACY: Enable Node.js compatibility
-#node_compat = true
+# Configure build to use Node.js versions of dependencies, not browser versions
+[build]
+command = ""
+
+[build.upload]
+format = "service-worker"
+
+# Include font files in the deployment
+[[ rules ]]
+type = "Text"
+globs = ["**/*.ttf"]
+fallthrough = true
+
+# Don't bundle canvas - let Workers use it via nodejs_compat
+[[ rules ]]
+type = "CompiledWasm"
+globs = ["**/*.wasm"]
+fallthrough = true
