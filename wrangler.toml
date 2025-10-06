@@ -1,0 +1,7 @@
+name = "vpd-chart-service"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+## LEGACY: Enable Node.js compatibility
+#node_compat = true

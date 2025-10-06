@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env development",
+    "cf:dev": "wrangler dev",
+    "cf:tail": "wrangler tail"
   },
   "keywords": [
     "vpd",
@@ -18,12 +22,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "latest",
+    "axios": "latest",
     "canvas": "latest",
-    "axios": "latest"
+    "express": "latest"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "wrangler": "^4.42.0"
   },
   "engines": {
     "node": ">=14.0.0"

@@ -12,12 +12,29 @@ A microservice for generating Vapor Pressure Deficit (VPD) charts with crop-spec
 
 ## Installation
 
+### Local Development
+
 ```bash
 npm install
 npm start
 ```
 
 Server runs on `http://localhost:3000` by default.
+
+### Deploy to Cloudflare Workers
+
+This service can be deployed to Cloudflare's global edge network with zero code changes!
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tyeth/vpd-chart-service)
+
+Or manually:
+```bash
+npm install -g wrangler
+wrangler login
+wrangler deploy
+```
+
+See [CLOUDFLARE.md](./CLOUDFLARE.md) for complete deployment instructions.
 
 ## API Usage
 

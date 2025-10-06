@@ -1,4 +1,3 @@
-const { httpServerHandler } = require('cloudflare:node');
 const express = require('express');
 const { createCanvas } = require('canvas');
 const axios = require('axios');
@@ -529,6 +528,8 @@ app.get('/health', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// Start server (Node.js environment)
 app.listen(PORT, () => {
   console.log(`VPD Chart Service running on port ${PORT}`);
   console.log(`\nExamples:`);
@@ -538,6 +539,5 @@ app.listen(PORT, () => {
   console.log(`\n  List crops: http://localhost:${PORT}/crops`);
 });
 
-export default httpServerHandler({ port: PORT });
-// Or you can simply pass the http.Server instance directly:
-// export default httpServerHandler(app.listen(3000));
+// Export the app for Cloudflare Workers wrapper
+module.exports = app;
