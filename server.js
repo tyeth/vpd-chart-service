@@ -1,4 +1,4 @@
-import { httpServerHandler } from 'cloudflare:node';
+const { httpServerHandler } = require('cloudflare:node');
 const express = require('express');
 const { createCanvas } = require('canvas');
 const axios = require('axios');
