@@ -144,6 +144,20 @@ wrangler deploy
 
 ## Troubleshooting
 
+### "document is not defined" Error
+
+If you see this error, make sure you've installed dependencies:
+
+```bash
+npm install
+```
+
+The service uses a canvas compatibility layer (`canvas-compat.js`) that automatically chooses the right canvas library:
+- Node.js: Uses `canvas` package
+- Workers: Uses `@napi-rs/canvas` package
+
+See [CANVAS-FIX.md](./CANVAS-FIX.md) for details.
+
 ### Canvas/Image Generation Issues
 
 The `canvas` package works in Workers with Node.js compatibility enabled. If you encounter issues:

@@ -1,5 +1,5 @@
 const express = require('express');
-const { createCanvas } = require('canvas');
+const { createCanvas } = require('./canvas-compat');
 const axios = require('axios');
 
 const app = express();

@@ -22,6 +22,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.58",
     "axios": "latest",
     "canvas": "latest",
     "express": "latest"
