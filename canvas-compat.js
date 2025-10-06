@@ -1,7 +1,7 @@
 // Canvas compatibility layer for Node.js and Cloudflare Workers
 // Automatically uses the right canvas implementation
 
-let createCanvas, loadImage;
+let createCanvas, loadImage, PureImage;
 
 // Detect if we're in Cloudflare Workers environment
 const isCloudflareWorkers = typeof globalThis.caches !== 'undefined' && 
@@ -21,7 +21,7 @@ if (isCloudflareWorkers) {
   console.log('=== Loading pureimage for Cloudflare Workers ===');
   
   // Use our shim that forces the Node.js version (not browser version)
-  const PureImage = require('./pureimage-node.js');
+  PureImage = require('./pureimage-node.js');
   const opentype = require('opentype.js');
   
   // Load embedded font data (base64 encoded)
@@ -131,4 +131,10 @@ if (isCloudflareWorkers) {
   }
 }
 
-module.exports = { createCanvas, loadImage, fontInitPromise };
+// Export PureImage for custom font registration in Workers environment
+module.exports = { 
+  createCanvas, 
+  loadImage, 
+  fontInitPromise,
+  PureImage: isCloudflareWorkers ? PureImage : null
+};
