@@ -693,10 +693,10 @@ app.post('/vpd-chart', async (req, res) => {
     if (callbackUrl || feedUrl) {
       try {
         if (callbackUrl) {
-          await axios.post(callbackUrl, response);
+          await axios.post(callbackUrl, base64Image);
         } else if (feedUrl && aioKey) {
           await axios.post(feedUrl, 
-            { value: vpd.toFixed(2) },
+            { value: base64Image },
             { headers: { 'X-AIO-Key': aioKey } }
           );
         }

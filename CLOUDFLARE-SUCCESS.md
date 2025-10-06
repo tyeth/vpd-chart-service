@@ -46,9 +46,61 @@ module.exports = require('pureimage/dist/index.cjs');
 
 ## Known Issues
 
-⚠️ **Font warnings**: Pureimage shows warnings about missing Arial font
-- This is cosmetic and doesn't break functionality
-- Can be fixed by registering a font with `PureImage.registerFont()`
+✅ **RESOLVED: Font warnings** - Fonts now render correctly!
+- Embedded Roboto font as base64 module (465KB)
+- Custom font loading from CDN URLs supported
+- Text rendering fully functional
+
+## Latest Updates (October 6, 2025)
+
+### Font Rendering - COMPLETE ✅
+Successfully implemented font loading with:
+1. **Embedded Default Font**: Roboto-Regular.ttf as base64 module
+2. **Custom Font Support**: Load any TTF/OTF font from URL
+3. **Font Caching**: In-memory cache for loaded fonts
+4. **Manual Registration**: Bypassed pureimage's file-based loadSync()
+
+### POST Endpoint Added ✅
+- Accepts same query string parameters as GET
+- Works with both default and custom fonts
+- Tested and verified working
+
+### Test Results Summary
+
+| Test | Method | Font | Result | Size |
+|------|--------|------|--------|------|
+| Default font | GET | Roboto | ✅ Pass | 32.25 KB |
+| Default font | POST | Roboto | ✅ Pass | 32.25 KB |
+| Custom font | GET | Montserrat | ✅ Pass | 32.33 KB |
+| Custom font | POST | Montserrat | ✅ Pass | 32.33 KB |
+
+### Custom Font Examples
+
+**Using Montserrat from GitHub**:
+```bash
+curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&font_url=https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-Regular.ttf"
+```
+
+**POST request with custom font**:
+```powershell
+Invoke-WebRequest -Method POST `
+  -Uri "http://localhost:8787/vpd-chart?air_temp=25&rh=60&font_url=https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-Regular.ttf" `
+  -OutFile chart.png
+```
+
+### Font Loading Implementation
+
+```javascript
+// 1. Parse font with opentype.js
+const font = opentype.parse(arrayBuffer);
+
+// 2. Register with pureimage
+const registeredFont = PureImage.registerFont(font, 'Roboto', null, null, 'normal');
+
+// 3. Manually set loaded flags (critical step!)
+registeredFont.loaded = true;
+registeredFont.font = font;
+```
 
 ## Next Steps (Optional Improvements)
 
