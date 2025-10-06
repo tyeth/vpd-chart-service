@@ -1,0 +1,31 @@
+{
+  "name": "vpd-chart-service",
+  "version": "1.0.0",
+  "description": "VPD chart generation service with Adafruit IO integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "vpd",
+    "vapor-pressure-deficit",
+    "agriculture",
+    "greenhouse",
+    "adafruit-io",
+    "iot"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "latest",
+    "canvas": "latest",
+    "axios": "latest"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
