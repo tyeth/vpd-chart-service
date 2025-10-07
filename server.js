@@ -700,6 +700,8 @@ app.post('/vpd-chart', async (req, res) => {
             { headers: { 'X-AIO-Key': aioKey } }
           );
         }
+        // drop image from response if using callbacks
+        response.image = len(response.image); // avoid unnecessary data
       } catch (callbackError) {
         console.error('Callback error:', callbackError.message);
         response.callback_error = callbackError.message;
