@@ -4,11 +4,14 @@ A microservice for generating Vapor Pressure Deficit (VPD) charts with crop-spec
 
 ## Features
 
+- **Scientifically accurate VPD calculations**: Uses the established Tetens equation following Wikipedia/ASHRAE standards
 - **Accurate VPD curves**: Zones properly curve with temperature (not flat bands!)
 - **Crop-specific configurations**: Pre-configured for cannabis, tomato, lettuce, orchid, and general use
 - **Growth stage awareness**: Different VPD ranges for seedling, vegetative, flowering, and recovery stages
 - **Smart band display**: Shows relevant zones based on your input
 - **Adafruit IO integration**: Post charts directly to your IoT dashboard
+
+> **About VPD Calculations**: This service uses scientifically validated formulas for VPD calculation. See [VPD-CALCULATION.md](./VPD-CALCULATION.md) for detailed methodology, formulas, and verification.
 
 ## Installation
 

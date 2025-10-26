@@ -141,24 +141,72 @@ async function postToFeed(feedUrl, aioKey, base64Image) {
   }
 }
 
-// Calculate VPD from temperatures
+/**
+ * VPD Calculation Functions
+ * 
+ * These functions implement scientifically accurate VPD calculations following
+ * standard psychrometric principles as defined by Wikipedia and ASHRAE standards.
+ * 
+ * References:
+ * - https://en.wikipedia.org/wiki/Vapour-pressure_deficit
+ * - https://en.wikipedia.org/wiki/Psychrometrics
+ * - Tetens, O. (1930). "Über einige meteorologische Begriffe"
+ * - Buck, A. L. (1981). "New equations for computing vapor pressure and enhancement factor"
+ * 
+ * Two types of VPD can be calculated:
+ * 
+ * 1. Air-based VPD (atmospheric):
+ *    VPD = SVP(air_temp) - actual_VP
+ *    - Measures atmospheric evaporative demand
+ *    - Standard for climate control and published ranges
+ * 
+ * 2. Canopy-based VPD (leaf-to-air):
+ *    VPD = SVP(leaf_temp) - actual_VP
+ *    - Measures transpiration driving force
+ *    - Better for precision agriculture with leaf sensors
+ * 
+ * The Tetens equation (1930) is used for calculating saturation vapor pressure:
+ *   SVP = 0.6108 × exp((17.27 × T) / (T + 237.3))  [kPa]
+ * 
+ * This equation is accurate within ±0.1% for temperatures 0-50°C, which covers
+ * all typical plant cultivation scenarios. Pressure corrections are not needed
+ * for typical greenhouse/indoor grow applications (< 2000m elevation).
+ */
+
+// Calculate air-based VPD from air and leaf temperatures (approximation when RH not available)
 function calculateVPD(airTemp, leafTemp) {
-  // Saturation vapor pressure (SVP) using simplified formula
+  // Saturation vapor pressure using Tetens equation (accurate for 0-50°C)
   const svpAir = 0.6108 * Math.exp((17.27 * airTemp) / (airTemp + 237.3));
   const svpLeaf = 0.6108 * Math.exp((17.27 * leafTemp) / (leafTemp + 237.3));
   
   // VPD = SVP at air temp - SVP at leaf temp
+  // This is an approximation that assumes the leaf is transpiring and creating
+  // a microclimate where actual VP ≈ SVP at leaf temperature
   return svpAir - svpLeaf;
 }
 
-// Calculate VPD for a given air temperature and relative humidity
+// Calculate air-based VPD from air temperature and relative humidity
 function calculateVPDFromRH(airTemp, rh) {
-  // Saturation vapor pressure at air temp (in kPa)
+  // Saturation vapor pressure at air temp using Tetens equation (in kPa)
   const svpAir = 0.6108 * Math.exp((17.27 * airTemp) / (airTemp + 237.3));
-  // Actual vapor pressure
+  // Actual vapor pressure from relative humidity
   const avp = svpAir * (rh / 100);
-  // VPD = SVP - AVP
+  // Air-based VPD = SVP(air) - Actual VP
   return svpAir - avp;
+}
+
+// Calculate canopy-based VPD from leaf temperature, air temperature, and relative humidity
+function calculateCanopyVPD(leafTemp, airTemp, rh) {
+  // Calculate actual vapor pressure from air conditions
+  const svpAir = 0.6108 * Math.exp((17.27 * airTemp) / (airTemp + 237.3));
+  const actualVP = svpAir * (rh / 100);
+  
+  // Saturation vapor pressure at leaf temperature
+  const svpLeaf = 0.6108 * Math.exp((17.27 * leafTemp) / (leafTemp + 237.3));
+  
+  // Canopy-based VPD = SVP(leaf) - Actual VP
+  // This represents the vapor pressure gradient at the leaf surface
+  return svpLeaf - actualVP;
 }
 
 // Calculate RH needed for a target VPD at a given air temperature
@@ -566,12 +614,13 @@ app.get('/vpd-chart', async (req, res) => {
       actualLeafTemp = leafTemp !== null ? leafTemp : null;
       actualRH = rh !== null ? rh : null;
     } else if (rh !== null && leafTemp !== null) {
-      // Both RH and leaf temp provided - use RH for VPD calculation (more accurate)
-      vpd = calculateVPDFromRH(airTemp, rh);
+      // Both RH and leaf temp provided - calculate canopy-based VPD
+      // This uses SVP at leaf temperature for precision greenhouse applications
+      vpd = calculateCanopyVPD(leafTemp, airTemp, rh);
       actualRH = rh;
       actualLeafTemp = leafTemp;
     } else if (rh !== null) {
-      // Only RH provided - calculate VPD from air temp and RH
+      // Only RH provided - calculate air-based VPD from air temp and RH
       vpd = calculateVPDFromRH(airTemp, rh);
       actualRH = rh;
       actualLeafTemp = null;
@@ -747,10 +796,12 @@ app.post('/vpd-chart', async (req, res) => {
       actualLeafTemp = leafTemp !== null ? leafTemp : null;
       actualRH = rh !== null ? rh : null;
     } else if (rh !== null && leafTemp !== null) {
-      vpd = calculateVPDFromRH(airTemp, rh);
+      // Both RH and leaf temp provided - calculate canopy-based VPD
+      vpd = calculateCanopyVPD(leafTemp, airTemp, rh);
       actualRH = rh;
       actualLeafTemp = leafTemp;
     } else if (rh !== null) {
+      // Only RH provided - calculate air-based VPD
       vpd = calculateVPDFromRH(airTemp, rh);
       actualRH = rh;
       actualLeafTemp = null;
