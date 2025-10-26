@@ -169,6 +169,26 @@ function calculateRHForVPD(airTemp, targetVPD) {
   return Math.max(0, Math.min(100, rh)); // Clamp between 0-100%
 }
 
+// Find temperature that produces a target VPD at given RH using binary search
+function findTempForVPD(targetVPD, rh, tempMin, tempMax, tolerance = 0.001, maxIterations = 20) {
+  let low = tempMin;
+  let high = tempMax;
+  let temp = (low + high) / 2;
+  
+  for (let iter = 0; iter < maxIterations; iter++) {
+    const currentVPD = calculateVPDFromRH(temp, rh);
+    if (Math.abs(currentVPD - targetVPD) < tolerance) break;
+    if (currentVPD < targetVPD) {
+      low = temp;
+    } else {
+      high = temp;
+    }
+    temp = (low + high) / 2;
+  }
+  
+  return temp;
+}
+
 // Generate VPD chart
 async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFamily = 'Roboto') {
   const width = 600;
@@ -185,15 +205,16 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
   
+  // RH range: 0-100%
+  const rhMin = 0;
+  const rhMax = 100;
   // Temperature range: 15-35°C
   const tempMin = 15;
   const tempMax = 35;
-  const vpdMin = 0;
-  const vpdMax = 2.0;
   
-  // Helper functions
-  const tempToX = (temp) => margin.left + ((temp - tempMin) / (tempMax - tempMin)) * chartWidth;
-  const vpdToY = (vpd) => margin.top + chartHeight - ((vpd - vpdMin) / (vpdMax - vpdMin)) * chartHeight;
+  // Helper functions (swapped axes: x=RH, y=temp)
+  const rhToX = (rh) => margin.left + ((rh - rhMin) / (rhMax - rhMin)) * chartWidth;
+  const tempToY = (temp) => margin.top + chartHeight - ((temp - tempMin) / (tempMax - tempMin)) * chartHeight;
   
   // Get crop configuration
   const cropConfig = getCropConfig(cropType);
@@ -214,8 +235,8 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
     });
   }
   
-  // Draw VPD zones - with curves based on RH lines
-  const tempSteps = 100; // Number of points to plot smooth curves
+  // Draw VPD zones - with curves based on temperature lines across RH values
+  const rhSteps = 100; // Number of points to plot smooth curves
   
   stagesToShow.forEach(stageKey => {
     const range = cropConfig.stages[stageKey];
@@ -223,36 +244,37 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
     
     const isCurrentStage = stageKey === stage;
     
-    // For each VPD zone, we need to find RH values at reference temperature
-    // Then plot those RH lines across all temperatures
-    const refTemp = 24; // Reference temperature for defining RH
-    const rhMin = calculateRHForVPD(refTemp, range.max); // Lower RH = higher VPD
-    const rhMax = calculateRHForVPD(refTemp, range.min); // Higher RH = lower VPD
+    // For each VPD zone, we need to find the temperature curves at different RH values
+    // that correspond to the min and max VPD of the range
     
     // Create path for the zone boundary
     ctx.save();
     ctx.beginPath();
     
-    // Draw top boundary (lower RH line -> higher VPD)
-    for (let i = 0; i <= tempSteps; i++) {
-      const temp = tempMin + (i / tempSteps) * (tempMax - tempMin);
-      const vpdValue = calculateVPDFromRH(temp, rhMin);
-      const x = tempToX(temp);
-      const y = vpdToY(vpdValue);
+    // Draw top boundary (max VPD curve)
+    let firstPoint = true;
+    for (let i = 0; i <= rhSteps; i++) {
+      const rh = rhMin + (i / rhSteps) * (rhMax - rhMin);
+      const temp = findTempForVPD(range.max, rh, tempMin, tempMax);
       
-      if (i === 0) {
+      const x = rhToX(rh);
+      const y = tempToY(temp);
+      
+      if (firstPoint) {
         ctx.moveTo(x, y);
+        firstPoint = false;
       } else {
         ctx.lineTo(x, y);
       }
     }
     
-    // Draw bottom boundary (higher RH line -> lower VPD) in reverse
-    for (let i = tempSteps; i >= 0; i--) {
-      const temp = tempMin + (i / tempSteps) * (tempMax - tempMin);
-      const vpdValue = calculateVPDFromRH(temp, rhMax);
-      const x = tempToX(temp);
-      const y = vpdToY(vpdValue);
+    // Draw bottom boundary (min VPD curve) in reverse
+    for (let i = rhSteps; i >= 0; i--) {
+      const rh = rhMin + (i / rhSteps) * (rhMax - rhMin);
+      const temp = findTempForVPD(range.min, rh, tempMin, tempMax);
+      
+      const x = rhToX(rh);
+      const y = tempToY(temp);
       ctx.lineTo(x, y);
     }
     
@@ -268,11 +290,14 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
     // Zone label
     ctx.fillStyle = range.color;
     ctx.font = isCurrentStage ? `12px ${fontFamily}` : `11px ${fontFamily}`;
-    // Calculate label position at middle temperature
-    const midTemp = (tempMin + tempMax) / 2;
+    // Calculate label position at middle RH
     const midRH = (rhMin + rhMax) / 2;
-    const midVPD = calculateVPDFromRH(midTemp, midRH);
-    const labelY = vpdToY(midVPD);
+    const midVPD = (range.min + range.max) / 2;
+    
+    // Find temperature at midRH for midVPD
+    const labelTemp = findTempForVPD(midVPD, midRH, tempMin, tempMax);
+    
+    const labelY = tempToY(labelTemp);
     ctx.textAlign = 'right';
     ctx.fillText(range.label, width - margin.right - 5, labelY + 4);
   });
@@ -281,19 +306,19 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
   ctx.strokeStyle = '#E0E0E0';
   ctx.lineWidth = 1;
   
-  // Horizontal grid (VPD)
-  for (let vpd = 0; vpd <= vpdMax; vpd += 0.5) {
+  // Horizontal grid (Temperature)
+  for (let temp = tempMin; temp <= tempMax; temp += 5) {
     ctx.beginPath();
-    ctx.moveTo(margin.left, vpdToY(vpd));
-    ctx.lineTo(width - margin.right, vpdToY(vpd));
+    ctx.moveTo(margin.left, tempToY(temp));
+    ctx.lineTo(width - margin.right, tempToY(temp));
     ctx.stroke();
   }
   
-  // Vertical grid (Temperature)
-  for (let temp = tempMin; temp <= tempMax; temp += 5) {
+  // Vertical grid (RH)
+  for (let rh = 0; rh <= 100; rh += 10) {
     ctx.beginPath();
-    ctx.moveTo(tempToX(temp), margin.top);
-    ctx.lineTo(tempToX(temp), height - margin.bottom);
+    ctx.moveTo(rhToX(rh), margin.top);
+    ctx.lineTo(rhToX(rh), height - margin.bottom);
     ctx.stroke();
   }
   
@@ -306,18 +331,18 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
   ctx.lineTo(width - margin.right, height - margin.bottom);
   ctx.stroke();
   
-  // Y-axis labels (VPD)
+  // Y-axis labels (Temperature)
   ctx.fillStyle = '#000000';
   ctx.font = `12px ${fontFamily}`;
   ctx.textAlign = 'right';
-  for (let vpd = 0; vpd <= vpdMax; vpd += 0.5) {
-    ctx.fillText(vpd.toFixed(1), margin.left - 10, vpdToY(vpd) + 4);
+  for (let temp = tempMin; temp <= tempMax; temp += 5) {
+    ctx.fillText(temp + '°C', margin.left - 10, tempToY(temp) + 4);
   }
   
-  // X-axis labels (Temperature)
+  // X-axis labels (RH)
   ctx.textAlign = 'center';
-  for (let temp = tempMin; temp <= tempMax; temp += 5) {
-    ctx.fillText(temp + '°C', tempToX(temp), height - margin.bottom + 20);
+  for (let rh = 0; rh <= 100; rh += 10) {
+    ctx.fillText(rh + '%', rhToX(rh), height - margin.bottom + 20);
   }
   
   // Axis titles
@@ -326,12 +351,12 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
   ctx.rotate(-Math.PI / 2);
   ctx.font = `14px ${fontFamily}`;
   ctx.textAlign = 'center';
-  ctx.fillText('VPD (kPa)', 0, 0);
+  ctx.fillText('Air Temperature (°C)', 0, 0);
   ctx.restore();
   
   ctx.font = `14px ${fontFamily}`;
   ctx.textAlign = 'center';
-  ctx.fillText('Air Temperature (°C)', width / 2, height - 10);
+  ctx.fillText('Relative Humidity (%)', width / 2, height - 10);
   
   // Chart title
   ctx.font = `16px ${fontFamily}`;
@@ -341,9 +366,16 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
   ctx.fillText(title, width / 2, 25);
   
   // Plot current position
-  if (airTemp >= tempMin && airTemp <= tempMax && vpd >= vpdMin && vpd <= vpdMax) {
-    const x = tempToX(airTemp);
-    const y = vpdToY(vpd);
+  // We need RH to plot the position - calculate it from VPD and airTemp if not provided
+  let currentRH = null;
+  if (vpd !== null && airTemp !== null) {
+    currentRH = calculateRHForVPD(airTemp, vpd);
+  }
+  
+  if (currentRH !== null && currentRH >= rhMin && currentRH <= rhMax && 
+      airTemp >= tempMin && airTemp <= tempMax) {
+    const x = rhToX(currentRH);
+    const y = tempToY(airTemp);
     
     // Outer circle
     ctx.fillStyle = '#FF0000';
@@ -361,12 +393,12 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
     ctx.fillStyle = '#000000';
     ctx.font = `12px ${fontFamily}`;
     ctx.textAlign = 'left';
-    // Show leaf temp if different from air temp, or RH if calculated from it
+    // Show leaf temp if different from air temp
     const tempInfo = leafTemp !== null ? 
       `${airTemp.toFixed(1)}°C / ${leafTemp.toFixed(1)}°C` : 
       `${airTemp.toFixed(1)}°C`;
     ctx.fillText(
-      `Current: ${vpd.toFixed(2)} kPa @ ${tempInfo}`,
+      `Current: ${vpd.toFixed(2)} kPa @ ${tempInfo}, ${currentRH.toFixed(1)}% RH`,
       margin.left + 10,
       margin.top + 15
     );
