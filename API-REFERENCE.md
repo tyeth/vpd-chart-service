@@ -28,6 +28,8 @@ At least ONE of these must be provided:
 |-----------|------|---------|-------------|
 | `crop_type` | string | `general` | Crop type: `general`, `cannabis`, `tomato`, `lettuce` |
 | `stage` | string | none | Growth stage (see crop-specific stages below) |
+| `show_timestamp` | string/boolean | none | Show last updated timestamp: `true`, `false`, or custom string |
+| `timezone_offset` | float | none | Timezone offset in hours (alias: `tz_offset`): e.g., `5` for UTC+5, `-8` for UTC-8 |
 
 ## Optional Parameters - Customization
 
@@ -94,6 +96,21 @@ curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&font_url=https://github.
 
 # Open Sans font
 curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&font_url=https://github.com/googlefonts/opensans/raw/main/fonts/ttf/OpenSans-Regular.ttf"
+```
+
+### With Timestamp
+```bash
+# Show current UTC timestamp
+curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&show_timestamp=true"
+
+# Show timestamp with timezone offset (UTC+5)
+curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&show_timestamp=true&timezone_offset=5"
+
+# Show timestamp with negative offset (UTC-8)
+curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&show_timestamp=true&tz_offset=-8"
+
+# Show custom timestamp string
+curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&show_timestamp=2025-10-26%2010:30:00"
 ```
 
 ### With Callbacks
