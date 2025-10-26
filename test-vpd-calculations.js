@@ -5,16 +5,24 @@
  * scientifically accurate results according to established psychrometric principles.
  */
 
+// Tetens equation constants (used in server.js)
+const TETENS_A = 0.6108;  // kPa constant
+const TETENS_B = 17.27;   // Dimensionless constant
+const TETENS_C = 237.3;   // °C constant
+
+// Test tolerance for SVP calculations (±0.15% is well within Tetens accuracy)
+const SVP_TOLERANCE_PERCENT = 0.15;
+
 // Import or define the calculation functions
 function calculateVPDFromRH(airTemp, rh) {
-  const svpAir = 0.6108 * Math.exp((17.27 * airTemp) / (airTemp + 237.3));
+  const svpAir = TETENS_A * Math.exp((TETENS_B * airTemp) / (airTemp + TETENS_C));
   const avp = svpAir * (rh / 100);
   return svpAir - avp;
 }
 
 function calculateVPD(airTemp, leafTemp) {
-  const svpAir = 0.6108 * Math.exp((17.27 * airTemp) / (airTemp + 237.3));
-  const svpLeaf = 0.6108 * Math.exp((17.27 * leafTemp) / (leafTemp + 237.3));
+  const svpAir = TETENS_A * Math.exp((TETENS_B * airTemp) / (airTemp + TETENS_C));
+  const svpLeaf = TETENS_A * Math.exp((TETENS_B * leafTemp) / (leafTemp + TETENS_C));
   return svpAir - svpLeaf;
 }
 
@@ -91,10 +99,10 @@ console.log("-".repeat(70));
 
 let svpPassed = 0;
 knownSVPValues.forEach(test => {
-  const calculated = 0.6108 * Math.exp((17.27 * test.temp) / (test.temp + 237.3));
+  const calculated = TETENS_A * Math.exp((TETENS_B * test.temp) / (test.temp + TETENS_C));
   const error = Math.abs(calculated - test.svp);
   const percentError = (error / test.svp) * 100;
-  const pass = percentError < 0.15; // Within 0.15%
+  const pass = percentError < SVP_TOLERANCE_PERCENT;
   
   console.log(`  ${test.temp}°C: calculated=${calculated.toFixed(4)} kPa, ` +
               `expected=${test.svp.toFixed(4)} kPa, ` +
@@ -144,7 +152,7 @@ console.log("-".repeat(70));
 
 const edgeCases = [
   { name: "100% RH (VPD should be 0)", airTemp: 24, rh: 100, expectedVPD: 0 },
-  { name: "0% RH (VPD = SVP)", airTemp: 24, rh: 0, expectedSVP: 2.984 },
+  { name: "0% RH (VPD = SVP)", airTemp: 24, rh: 0, expectedSVP: 2.984 }, // SVP at 24°C using Tetens equation
   { name: "Very cold (5°C)", airTemp: 5, rh: 60, expectedVPD: 0.349 },
   { name: "Very hot (40°C)", airTemp: 40, rh: 50, expectedVPD: 3.688 }
 ];
@@ -158,7 +166,7 @@ edgeCases.forEach(test => {
     console.log(`  ${test.name}: ${vpd.toFixed(4)} kPa ${pass ? '✓' : '✗'}`);
     if (pass) edgePassed++;
   } else if (test.expectedSVP !== undefined) {
-    const svp = 0.6108 * Math.exp((17.27 * test.airTemp) / (test.airTemp + 237.3));
+    const svp = TETENS_A * Math.exp((TETENS_B * test.airTemp) / (test.airTemp + TETENS_C));
     const pass = Math.abs(vpd - test.expectedSVP) < 0.001;
     console.log(`  ${test.name}: VPD=${vpd.toFixed(4)} kPa, SVP=${svp.toFixed(4)} kPa ${pass ? '✓' : '✗'}`);
     if (pass) edgePassed++;
