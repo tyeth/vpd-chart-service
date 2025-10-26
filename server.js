@@ -414,22 +414,55 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
     
     let timestampText = '';
     
-    // If showTimestamp is a string (custom timestamp value), use it directly
-    if (typeof showTimestamp === 'string') {
-      timestampText = `Updated: ${showTimestamp}`;
-    } else if (showTimestamp === true || showTimestamp === 'true') {
-      // Generate timestamp with optional timezone offset
+    // Check if we should generate a timestamp (true or "true")
+    if (showTimestamp === true || showTimestamp === 'true') {
+      // Generate timestamp with optional timezone offset or name
       const now = new Date();
       
-      // Apply timezone offset if provided (in hours)
       if (timezoneOffset !== null) {
-        const offsetMs = parseFloat(timezoneOffset) * 60 * 60 * 1000;
-        const adjustedTime = new Date(now.getTime() + offsetMs);
-        timestampText = `Updated: ${adjustedTime.toISOString().replace('T', ' ').substring(0, 19)} UTC${timezoneOffset >= 0 ? '+' : ''}${timezoneOffset}`;
+        // Try to parse as numeric offset first
+        const numericOffset = parseFloat(timezoneOffset);
+        
+        if (!isNaN(numericOffset)) {
+          // Numeric offset in hours (e.g., 5 for UTC+5, -8 for UTC-8)
+          const offsetMs = numericOffset * 60 * 60 * 1000;
+          const adjustedTime = new Date(now.getTime() + offsetMs);
+          timestampText = `Updated: ${adjustedTime.toISOString().replace('T', ' ').substring(0, 19)} UTC${numericOffset >= 0 ? '+' : ''}${numericOffset}`;
+        } else {
+          // Try as IANA timezone identifier (e.g., "Europe/London", "America/New_York")
+          try {
+            const formatter = new Intl.DateTimeFormat('en-US', {
+              timeZone: timezoneOffset,
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            });
+            
+            const parts = formatter.formatToParts(now);
+            const dateParts = {};
+            parts.forEach(part => {
+              if (part.type !== 'literal') {
+                dateParts[part.type] = part.value;
+              }
+            });
+            
+            timestampText = `Updated: ${dateParts.year}-${dateParts.month}-${dateParts.day} ${dateParts.hour}:${dateParts.minute}:${dateParts.second} ${timezoneOffset}`;
+          } catch (tzError) {
+            // Invalid timezone, fall back to UTC
+            timestampText = `Updated: ${now.toISOString().replace('T', ' ').substring(0, 19)} UTC`;
+          }
+        }
       } else {
-        // Use local time formatting
+        // No timezone specified, use UTC
         timestampText = `Updated: ${now.toISOString().replace('T', ' ').substring(0, 19)} UTC`;
       }
+    } else if (typeof showTimestamp === 'string') {
+      // Custom timestamp string value
+      timestampText = `Updated: ${showTimestamp}`;
     }
     
     if (timestampText) {

@@ -29,7 +29,7 @@ At least ONE of these must be provided:
 | `crop_type` | string | `general` | Crop type: `general`, `cannabis`, `tomato`, `lettuce` |
 | `stage` | string | none | Growth stage (see crop-specific stages below) |
 | `show_timestamp` | string/boolean | none | Show last updated timestamp: `true`, `false`, or custom string |
-| `timezone_offset` | float | none | Timezone offset in hours (alias: `tz_offset`): e.g., `5` for UTC+5, `-8` for UTC-8 |
+| `timezone_offset` | float/string | none | Timezone as numeric offset in hours OR IANA timezone identifier (alias: `tz_offset`): e.g., `5` for UTC+5, `-8` for UTC-8, `Europe/London`, `America/New_York` |
 
 ## Optional Parameters - Customization
 
@@ -108,6 +108,12 @@ curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&show_timestamp=true&time
 
 # Show timestamp with negative offset (UTC-8)
 curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&show_timestamp=true&tz_offset=-8"
+
+# Show timestamp with IANA timezone identifier (Europe/London)
+curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&show_timestamp=true&timezone_offset=Europe/London"
+
+# Show timestamp with IANA timezone identifier (America/New_York)
+curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&show_timestamp=true&tz_offset=America/New_York"
 
 # Show custom timestamp string
 curl "http://localhost:8787/vpd-chart?air_temp=25&rh=60&show_timestamp=2025-10-26%2010:30:00"
