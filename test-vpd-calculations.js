@@ -26,14 +26,28 @@ function calculateVPD(airTemp, leafTemp) {
   return svpAir - svpLeaf;
 }
 
+function calculateCanopyVPD(leafTemp, airTemp, rh) {
+  const svpAir = TETENS_A * Math.exp((TETENS_B * airTemp) / (airTemp + TETENS_C));
+  const actualVP = svpAir * (rh / 100);
+  const svpLeaf = TETENS_A * Math.exp((TETENS_B * leafTemp) / (leafTemp + TETENS_C));
+  return svpLeaf - actualVP;
+}
+
 // Test cases with expected results
 const tests = [
   {
-    name: "Typical vegetative conditions",
+    name: "Typical vegetative conditions (air-based)",
     input: { airTemp: 24, rh: 60 },
     expected: 1.194,
     tolerance: 0.001,
     method: "RH"
+  },
+  {
+    name: "Canopy-based VPD (leaf cooler than air)",
+    input: { leafTemp: 22, airTemp: 24, rh: 60 },
+    expected: 0.854,
+    tolerance: 0.001,
+    method: "canopy"
   },
   {
     name: "Seedling conditions (high humidity)",
@@ -123,6 +137,8 @@ tests.forEach(test => {
   
   if (test.method === "RH") {
     calculated = calculateVPDFromRH(test.input.airTemp, test.input.rh);
+  } else if (test.method === "canopy") {
+    calculated = calculateCanopyVPD(test.input.leafTemp, test.input.airTemp, test.input.rh);
   } else {
     calculated = calculateVPD(test.input.airTemp, test.input.leafTemp);
   }
@@ -133,6 +149,8 @@ tests.forEach(test => {
   console.log(`  ${test.name}:`);
   if (test.method === "RH") {
     console.log(`    Input: ${test.input.airTemp}°C, ${test.input.rh}% RH`);
+  } else if (test.method === "canopy") {
+    console.log(`    Input: ${test.input.leafTemp}°C leaf, ${test.input.airTemp}°C air, ${test.input.rh}% RH`);
   } else {
     console.log(`    Input: ${test.input.airTemp}°C air, ${test.input.leafTemp}°C leaf`);
   }
