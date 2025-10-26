@@ -39,23 +39,38 @@ SVP = 0.6108 × exp((17.27 × T) / (T + 237.3))  [kPa]
 - ✅ Used by ASHRAE and meteorological standards
 - ✅ Matches commercial VPD calculators (Quest, Pulse, etc.)
 
-### 2. Adafruit Article Method (INCORRECT ❌)
+### 2. Adafruit Implementation Analysis (VERIFIED INCORRECT ❌)
 
-Based on analysis of the provided data, the Adafruit article appears to use:
+**Actual Adafruit IO Action Bytecode Analysis:**
+
+The Adafruit implementation uses the Magnus formula (mathematically equivalent to Tetens):
+```javascript
+SVP = 0.6107 × 10^(7.5 × T / (T + 237.3))
 ```
-VPD = SVP(leaf temperature) - Actual Vapor Pressure
+
+**BUT it applies this formula to the WRONG temperature:**
+```
+VPD = SVP(leaf temperature) - Actual Vapor Pressure  ❌ INCORRECT
 ```
 
 **This is INCORRECT because:**
-- ❌ Does not match psychrometric definitions
-- ❌ Produces values 20-30% too low
+- ❌ Violates psychrometric definitions (should use air temperature)
+- ❌ Produces values 30-60% too low depending on leaf-air temperature difference
 - ❌ Uses wrong reference temperature (leaf instead of air)
+- ❌ Doesn't represent the drying power of the air
 
-**Example Comparison** (24°C air, 22°C leaf, 60% RH):
-- Our method: 1.19 kPa ✅ (correct)
-- Adafruit method: ~0.85 kPa ❌ (too low)
+**Verified Example from User's Actual Data** (22.64°C air, 18.34°C leaf, 60.22% RH):
+- Adafruit method: **0.45 kPa** ❌ (59% too low)
+- Our method (Tetens): **1.09 kPa** ✅ (correct)
+- Magnus (correct implementation): **1.09 kPa** ✅ (correct)
 
-This explains the "0.8 vs 0.4" discrepancy mentioned in the issue!
+**Typical Example** (24°C air, 22°C leaf, 60% RH):
+- Our method: **1.19 kPa** ✅ (correct)
+- Adafruit method: **~0.85 kPa** ❌ (28% too low)
+
+**Key Finding:** The Adafruit implementation uses a valid mathematical formula (Magnus) but applies it to the wrong temperature. This is a fundamental conceptual error, not a formula accuracy issue.
+
+See [ADAFRUIT-COMPARISON.md](./ADAFRUIT-COMPARISON.md) for detailed analysis with actual bytecode and calculations.
 
 ### 3. Pressure Dependency Investigation
 

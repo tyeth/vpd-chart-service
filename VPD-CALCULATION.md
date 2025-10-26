@@ -154,9 +154,25 @@ The **driving force** for transpiration is the difference between:
 
 Using leaf temperature instead of air temperature changes the reference point and doesn't accurately represent the drying power of the air.
 
-### Comparison Example
+### Verified Comparison with Actual Adafruit Implementation
 
-At 24°C air, 22°C leaf, 60% RH:
+The Adafruit article uses the **Magnus formula** (equivalent to Tetens) but applies it to **leaf temperature** instead of air temperature:
+
+```javascript
+// Adafruit method (INCORRECT)
+SVP_leaf = 0.6107 × 10^(7.5 × T_leaf / (T_leaf + 237.3))
+VPD = SVP_leaf - Actual_VP
+```
+
+**Real-world example** from actual Adafruit IO action (22.64°C air, 18.34°C leaf, 60.22% RH):
+
+| Method | SVP Reference | VPD Result | Difference |
+|--------|---------------|------------|------------|
+| **Adafruit implementation** | Leaf temp (18.34°C) | **0.45 kPa** | ❌ 59% too low |
+| **Standard (this service)** | Air temp (22.64°C) | **1.09 kPa** | ✅ Correct |
+| Magnus (same as Tetens) | Air temp (22.64°C) | **1.09 kPa** | ✅ Correct |
+
+At 24°C air, 22°C leaf, 60% RH (typical conditions):
 
 | Method | VPD Result | Notes |
 |--------|------------|-------|
