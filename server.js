@@ -216,7 +216,7 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
   // Reversed: RH goes from high (100%) on left to low (0%) on right
   const rhToX = (rh) => margin.left + ((rhMax - rh) / (rhMax - rhMin)) * chartWidth;
   // Reversed: Temp goes from high (35°C) on bottom to low (15°C) on top
-  const tempToY = (temp) => margin.top + ((tempMax - temp) / (tempMax - tempMin)) * chartHeight;
+  const tempToY = (temp) => margin.top + ((temp - tempMin) / (tempMax - tempMin)) * chartHeight;
   
   // Get crop configuration
   const cropConfig = getCropConfig(cropType);
@@ -300,8 +300,11 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
     const labelTemp = findTempForVPD(midVPD, midRH, tempMin, tempMax);
     
     const labelY = tempToY(labelTemp);
+    // Ensure label doesn't overlap with x-axis area (keep it at least 15px above the bottom margin)
+    const maxLabelY = height - margin.bottom - 15;
+    const adjustedLabelY = Math.min(labelY + 4, maxLabelY);
     ctx.textAlign = 'right';
-    ctx.fillText(range.label, width - margin.right - 5, labelY + 4);
+    ctx.fillText(range.label, width - margin.right - 5, adjustedLabelY);
   });
   
   // Draw grid lines
