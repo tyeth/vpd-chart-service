@@ -190,7 +190,7 @@ function findTempForVPD(targetVPD, rh, tempMin, tempMax, tolerance = 0.001, maxI
 }
 
 // Generate VPD chart
-async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFamily = 'Roboto') {
+async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFamily = 'Roboto', showTimestamp = null, timezoneOffset = null) {
   const width = 600;
   const height = 400;
   const canvas = createCanvas(width, height);
@@ -213,8 +213,10 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
   const tempMax = 35;
   
   // Helper functions (swapped axes: x=RH, y=temp)
-  const rhToX = (rh) => margin.left + ((rh - rhMin) / (rhMax - rhMin)) * chartWidth;
-  const tempToY = (temp) => margin.top + chartHeight - ((temp - tempMin) / (tempMax - tempMin)) * chartHeight;
+  // Reversed: RH goes from high (100%) on left to low (0%) on right
+  const rhToX = (rh) => margin.left + ((rhMax - rh) / (rhMax - rhMin)) * chartWidth;
+  // Reversed: Temp goes from high (35°C) on bottom to low (15°C) on top
+  const tempToY = (temp) => margin.top + ((tempMax - temp) / (tempMax - tempMin)) * chartHeight;
   
   // Get crop configuration
   const cropConfig = getCropConfig(cropType);
@@ -404,6 +406,37 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
     );
   }
   
+  // Display timestamp if requested
+  if (showTimestamp !== null) {
+    ctx.fillStyle = '#666666';
+    ctx.font = `10px ${fontFamily}`;
+    ctx.textAlign = 'right';
+    
+    let timestampText = '';
+    
+    // If showTimestamp is a string (custom timestamp value), use it directly
+    if (typeof showTimestamp === 'string') {
+      timestampText = `Updated: ${showTimestamp}`;
+    } else if (showTimestamp === true || showTimestamp === 'true') {
+      // Generate timestamp with optional timezone offset
+      const now = new Date();
+      
+      // Apply timezone offset if provided (in hours)
+      if (timezoneOffset !== null) {
+        const offsetMs = parseFloat(timezoneOffset) * 60 * 60 * 1000;
+        const adjustedTime = new Date(now.getTime() + offsetMs);
+        timestampText = `Updated: ${adjustedTime.toISOString().replace('T', ' ').substring(0, 19)} UTC${timezoneOffset >= 0 ? '+' : ''}${timezoneOffset}`;
+      } else {
+        // Use local time formatting
+        timestampText = `Updated: ${now.toISOString().replace('T', ' ').substring(0, 19)} UTC`;
+      }
+    }
+    
+    if (timestampText) {
+      ctx.fillText(timestampText, width - margin.right - 5, height - margin.bottom - 5);
+    }
+  }
+  
   // Convert to optimized PNG buffer
   // Handle both sync (node-canvas) and async (OffscreenCanvas) APIs
   const toBufferResult = canvas.toBuffer('image/png');
@@ -427,6 +460,10 @@ app.get('/vpd-chart', async (req, res) => {
     const stage = req.query.stage || null;
     const fontUrl = req.query.font_url || null;
     const fontName = req.query.font_name || null;
+    
+    // New timestamp parameters
+    const showTimestamp = req.query.show_timestamp || null;
+    const timezoneOffset = req.query.timezone_offset || req.query.tz_offset || null;
     
     // Load custom font if URL provided
     let customFontFamily = null;
@@ -521,7 +558,9 @@ app.get('/vpd-chart', async (req, res) => {
       actualLeafTemp, 
       cropType, 
       stage,
-      customFontFamily || 'Roboto'
+      customFontFamily || 'Roboto',
+      showTimestamp,
+      timezoneOffset
     );
     const base64Image = pngBuffer.toString('base64');
     
@@ -603,6 +642,10 @@ app.post('/vpd-chart', async (req, res) => {
     const stage = req.query.stage || null;
     const fontUrl = req.query.font_url || null;
     const fontName = req.query.font_name || null;
+    
+    // New timestamp parameters
+    const showTimestamp = req.query.show_timestamp || null;
+    const timezoneOffset = req.query.timezone_offset || req.query.tz_offset || null;
     
     // Load custom font if URL provided
     let customFontFamily = null;
@@ -692,7 +735,9 @@ app.post('/vpd-chart', async (req, res) => {
       actualLeafTemp, 
       cropType, 
       stage,
-      customFontFamily || 'Roboto'
+      customFontFamily || 'Roboto',
+      showTimestamp,
+      timezoneOffset
     );
     const base64Image = pngBuffer.toString('base64');
     
