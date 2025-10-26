@@ -169,6 +169,26 @@ function calculateRHForVPD(airTemp, targetVPD) {
   return Math.max(0, Math.min(100, rh)); // Clamp between 0-100%
 }
 
+// Find temperature that produces a target VPD at given RH using binary search
+function findTempForVPD(targetVPD, rh, tempMin, tempMax, tolerance = 0.001, maxIterations = 20) {
+  let low = tempMin;
+  let high = tempMax;
+  let temp = (low + high) / 2;
+  
+  for (let iter = 0; iter < maxIterations; iter++) {
+    const currentVPD = calculateVPDFromRH(temp, rh);
+    if (Math.abs(currentVPD - targetVPD) < tolerance) break;
+    if (currentVPD < targetVPD) {
+      low = temp;
+    } else {
+      high = temp;
+    }
+    temp = (low + high) / 2;
+  }
+  
+  return temp;
+}
+
 // Generate VPD chart
 async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFamily = 'Roboto') {
   const width = 600;
@@ -235,27 +255,7 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
     let firstPoint = true;
     for (let i = 0; i <= rhSteps; i++) {
       const rh = rhMin + (i / rhSteps) * (rhMax - rhMin);
-      
-      // For a given RH and target VPD, find the temperature
-      // VPD = SVP(temp) * (1 - rh/100)
-      // We need to solve for temp given VPD and rh
-      // This requires iterative solving or using the inverse formula
-      
-      // Binary search to find temperature for this RH that gives range.max VPD
-      let low = tempMin;
-      let high = tempMax;
-      let temp = (low + high) / 2;
-      
-      for (let iter = 0; iter < 20; iter++) {
-        const currentVPD = calculateVPDFromRH(temp, rh);
-        if (Math.abs(currentVPD - range.max) < 0.001) break;
-        if (currentVPD < range.max) {
-          low = temp;
-        } else {
-          high = temp;
-        }
-        temp = (low + high) / 2;
-      }
+      const temp = findTempForVPD(range.max, rh, tempMin, tempMax);
       
       const x = rhToX(rh);
       const y = tempToY(temp);
@@ -271,22 +271,7 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
     // Draw bottom boundary (min VPD curve) in reverse
     for (let i = rhSteps; i >= 0; i--) {
       const rh = rhMin + (i / rhSteps) * (rhMax - rhMin);
-      
-      // Binary search to find temperature for this RH that gives range.min VPD
-      let low = tempMin;
-      let high = tempMax;
-      let temp = (low + high) / 2;
-      
-      for (let iter = 0; iter < 20; iter++) {
-        const currentVPD = calculateVPDFromRH(temp, rh);
-        if (Math.abs(currentVPD - range.min) < 0.001) break;
-        if (currentVPD < range.min) {
-          low = temp;
-        } else {
-          high = temp;
-        }
-        temp = (low + high) / 2;
-      }
+      const temp = findTempForVPD(range.min, rh, tempMin, tempMax);
       
       const x = rhToX(rh);
       const y = tempToY(temp);
@@ -310,20 +295,7 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
     const midVPD = (range.min + range.max) / 2;
     
     // Find temperature at midRH for midVPD
-    let low = tempMin;
-    let high = tempMax;
-    let labelTemp = (low + high) / 2;
-    
-    for (let iter = 0; iter < 20; iter++) {
-      const currentVPD = calculateVPDFromRH(labelTemp, midRH);
-      if (Math.abs(currentVPD - midVPD) < 0.001) break;
-      if (currentVPD < midVPD) {
-        low = labelTemp;
-      } else {
-        high = labelTemp;
-      }
-      labelTemp = (low + high) / 2;
-    }
+    const labelTemp = findTempForVPD(midVPD, midRH, tempMin, tempMax);
     
     const labelY = tempToY(labelTemp);
     ctx.textAlign = 'right';
