@@ -54,9 +54,16 @@ GET /vpd-chart?air_temp=24&rh=65&crop_type=cannabis&stage=veg
 | `vpd` | No | Direct VPD value (kPa) | `1.1` |
 | `crop_type` | No | Crop type (see list below) | `cannabis` |
 | `stage` | No | Growth stage (see below) | `veg` |
+| `show_timestamp` | No | Show last updated timestamp | `true`, `false`, or custom string |
+| `timezone_offset` | No | Timezone offset in hours (alias: `tz_offset`) | `5` (UTC+5), `-8` (UTC-8) |
 | `callback_url` | No | Adafruit IO webhook URL | (see integration) |
 | `feed_url` | No | Adafruit IO feed URL | (see integration) |
 | `aio_key` | No | Adafruit IO API key | (see integration) |
+
+**Timestamp Parameters:**
+- If `show_timestamp=true`, displays current UTC time (or with offset if `timezone_offset` is provided)
+- If `show_timestamp` is a custom string, displays that string as-is
+- `timezone_offset` accepts positive or negative hour offsets (e.g., `5` for UTC+5, `-8` for UTC-8)
 
 **VPD Calculation Priority:**
 - If `vpd` is provided, it's used directly (other params are informational only)
@@ -169,6 +176,21 @@ curl "http://localhost:3000/vpd-chart?air_temp=24&rh=55&crop_type=cannabis&stage
 ```
 This shows ONLY the sick-dry recovery zone (1 zone).
 
+### Chart with timestamp
+```bash
+# Show current UTC timestamp
+curl "http://localhost:3000/vpd-chart?air_temp=24&rh=60&crop_type=cannabis&stage=veg&show_timestamp=true"
+
+# Show timestamp with timezone offset (UTC+5)
+curl "http://localhost:3000/vpd-chart?air_temp=24&rh=60&crop_type=cannabis&stage=veg&show_timestamp=true&timezone_offset=5"
+
+# Show timestamp with negative offset (UTC-8, Pacific Time)
+curl "http://localhost:3000/vpd-chart?air_temp=24&rh=60&crop_type=cannabis&stage=veg&show_timestamp=true&tz_offset=-8"
+
+# Show custom timestamp
+curl "http://localhost:3000/vpd-chart?air_temp=24&rh=60&crop_type=cannabis&stage=veg&show_timestamp=2025-10-26%2010:30:00"
+```
+
 ### List available crops and stages
 ```bash
 curl "http://localhost:3000/crops"
@@ -203,6 +225,19 @@ The charts display VPD zones as **curves, not flat bands**. This is scientifical
 4. These RH bands create upward-sloping curves as temperature increases
 
 For example, the vegetative zone (0.8-1.2 kPa at 24°C) represents approximately 72% RH to 56% RH. At 15°C, those same RH values produce lower VPD (~0.5-0.7 kPa), while at 35°C they produce higher VPD (~1.3-1.9 kPa).
+
+## Chart Axes
+
+The chart uses reversed axes for easier reading:
+
+- **X-axis (Humidity)**: 100% (left) to 0% (right) - High humidity on left, low on right
+- **Y-axis (Temperature)**: 35°C (bottom) to 15°C (top) - High temperature at bottom, low at top
+
+This layout makes it intuitive to see that:
+- Moving left = higher humidity = lower VPD (more humid conditions)
+- Moving right = lower humidity = higher VPD (drier conditions)
+- Moving down = higher temperature = higher VPD (hotter conditions)
+- Moving up = lower temperature = lower VPD (cooler conditions)
 
 ## Development
 
