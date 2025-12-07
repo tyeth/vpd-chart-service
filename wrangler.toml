@@ -3,13 +3,6 @@ main = "worker.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-# Configure build to use Node.js versions of dependencies, not browser versions
-[build]
-command = ""
-
-[build.upload]
-format = "service-worker"
-
 # Include font files in the deployment
 [[ rules ]]
 type = "Text"
