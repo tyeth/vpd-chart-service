@@ -245,11 +245,15 @@ This layout makes it intuitive to see that:
 # Install dependencies
 npm install
 
-# Run in dev mode with auto-reload
+# Run in dev mode with auto-reload (Node.js)
 npm run dev
+
+# Run in Cloudflare Workers local mode (with full Node.js compatibility)
+npm run cf:dev
 
 # Run tests
 node test_chart.js
+```
 ```
 
 ## License

@@ -48,10 +48,12 @@ npm run dev  # with auto-reload
 ```bash
 npm run cf:dev
 # or
-wrangler dev
+wrangler dev --local
 ```
 
 The Worker version runs at `http://localhost:8787` by default.
+
+**Note:** The `--local` flag enables full Node.js compatibility in local development mode, providing better simulation of the Workers environment with complete Node.js API support.
 
 ## Deployment
 
