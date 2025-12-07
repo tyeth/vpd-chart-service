@@ -254,7 +254,6 @@ npm run cf:dev
 # Run tests
 node test_chart.js
 ```
-```
 
 ## License
 
