@@ -190,9 +190,7 @@ function findTempForVPD(targetVPD, rh, tempMin, tempMax, tolerance = 0.001, maxI
 }
 
 // Generate VPD chart
-async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFamily = 'Roboto', showTimestamp = null, timezoneOffset = null) {
-  const width = 600;
-  const height = 400;
+async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFamily = 'Roboto', showTimestamp = null, timezoneOffset = null, width = 600, height = 400, margin = { top: 40, right: 30, bottom: 60, left: 60 }) {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
   
@@ -201,9 +199,9 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
   ctx.fillRect(0, 0, width, height);
   
   // Chart area
-  const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-  const chartWidth = width - margin.left - margin.right;
-  const chartHeight = height - margin.top - margin.bottom;
+  const chartMargin = margin;
+  const chartWidth = width - chartMargin.left - chartMargin.right;
+  const chartHeight = height - chartMargin.top - chartMargin.bottom;
   
   // RH range: 0-100%
   const rhMin = 0;
@@ -496,6 +494,14 @@ app.get('/vpd-chart', async (req, res) => {
     const stage = req.query.stage || null;
     const fontUrl = req.query.font_url || null;
     const fontName = req.query.font_name || null;
+    const width = req.query.width ? parseInt(req.query.width) : 600;
+    const height = req.query.height ? parseInt(req.query.height) : 400;
+    const margin = {
+      top: req.query.margin_top ? parseInt(req.query.margin_top) : 40,
+      right: req.query.margin_right ? parseInt(req.query.margin_right) : 30,
+      bottom: req.query.margin_bottom ? parseInt(req.query.margin_bottom) : 60,
+      left: req.query.margin_left ? parseInt(req.query.margin_left) : 60
+    };
     
     // New timestamp parameters
     const showTimestamp = req.query.show_timestamp || null;
@@ -596,7 +602,10 @@ app.get('/vpd-chart', async (req, res) => {
       stage,
       customFontFamily || 'Roboto',
       showTimestamp,
-      timezoneOffset
+      timezoneOffset,
+      width,
+      height,
+      margin
     );
     const base64Image = pngBuffer.toString('base64');
     
@@ -620,7 +629,9 @@ app.get('/vpd-chart', async (req, res) => {
       stage: stage,
       status: status,
       image: base64Image,
-      image_format: 'png'
+      image_format: 'png',
+      image_width: width,
+      image_height: height
     };
     
     // Add RH or leaf_temp to response as appropriate
@@ -678,6 +689,14 @@ app.post('/vpd-chart', async (req, res) => {
     const stage = req.query.stage || null;
     const fontUrl = req.query.font_url || null;
     const fontName = req.query.font_name || null;
+    const width = req.query.width ? parseInt(req.query.width) : 600;
+    const height = req.query.height ? parseInt(req.query.height) : 400;
+    const margin = {
+      top: req.query.margin_top ? parseInt(req.query.margin_top) : 40,
+      right: req.query.margin_right ? parseInt(req.query.margin_right) : 30,
+      bottom: req.query.margin_bottom ? parseInt(req.query.margin_bottom) : 60,
+      left: req.query.margin_left ? parseInt(req.query.margin_left) : 60
+    };
     
     // New timestamp parameters
     const showTimestamp = req.query.show_timestamp || null;
@@ -773,7 +792,10 @@ app.post('/vpd-chart', async (req, res) => {
       stage,
       customFontFamily || 'Roboto',
       showTimestamp,
-      timezoneOffset
+      timezoneOffset,
+      width,
+      height,
+      margin
     );
     const base64Image = pngBuffer.toString('base64');
     
@@ -799,7 +821,9 @@ app.post('/vpd-chart', async (req, res) => {
       stage: stage,
       status: status,
       image: `data:image/png;base64,${base64Image}`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      image_width: width,
+      image_height: height
     };
     
     // Handle callbacks if provided
@@ -851,12 +875,14 @@ const PORT = process.env.PORT || 3000;
 // Only start the server if this file is run directly (not imported as a module)
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`VPD Chart Service running on port ${PORT}`);
-    console.log(`\nExamples:`);
-    console.log(`  Basic: http://localhost:${PORT}/vpd-chart?air_temp=24&crop_type=tomato&stage=flower`);
-    console.log(`  With raw webhook: ...&callback_url=https://io.adafruit.com/api/v2/webhooks/feed/YOUR_WEBHOOK_ID/raw`);
-    console.log(`  With feed + key: ...&feed_url=https://io.adafruit.com/USERNAME/feeds/FEED&aio_key=YOUR_KEY`);
-    console.log(`\n  List crops: http://localhost:${PORT}/crops`);
+    const rawHelp = `VPD Chart Service running on port ${PORT}` +
+    `\nExamples:\n` +
+    `  Basic: http://localhost:${PORT}/vpd-chart?air_temp=24&crop_type=tomato&stage=flower\n` +
+    `  With raw webhook: ...&callback_url=https://io.adafruit.com/api/v2/webhooks/feed/YOUR_WEBHOOK_ID/raw\n` +
+    `  With feed + key: ...&feed_url=https://io.adafruit.com/USERNAME/feeds/FEED&aio_key=YOUR_KEY\n` +
+    `\n  List crops: http://localhost:${PORT}/crops`;
+    
+    console.log(rawHelp);
   });
 }
 
