@@ -339,13 +339,13 @@ async function generateVPDChart(vpd, airTemp, leafTemp, cropType, stage, fontFam
   ctx.font = `12px ${fontFamily}`;
   ctx.textAlign = 'right';
   for (let temp = tempMin; temp <= tempMax; temp += 5) {
-    ctx.fillText(temp + '°C', margin.left - 10, tempToY(temp) + 4);
+    ctx.fillText(`${temp}`, margin.left - 10, tempToY(temp) + 4);
   }
   
   // X-axis labels (RH)
   ctx.textAlign = 'center';
   for (let rh = 0; rh <= 100; rh += 10) {
-    ctx.fillText(rh + '%', rhToX(rh), height - margin.bottom + 20);
+    ctx.fillText(`${rh}`, rhToX(rh), height - margin.bottom + 20);
   }
   
   // Axis titles
